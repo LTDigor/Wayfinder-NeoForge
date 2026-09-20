@@ -1,36 +1,28 @@
-# Wayfinder NeoForge 1.21.1 compatibility port
+# Wayfinder NeoForge 1.21.1 backport
 
-Private, unofficial compatibility port of **Wayfinder 2.3** by **Nitron / n1tr0n__** from Fabric 1.21.1 to NeoForge 1.21.1.
+Private, unofficial NeoForge 1.21.1 backport of **Wayfinder 3.5** by **Nitron / n1tr0n__**.
 
-Upstream: https://github.com/n1tr0nR/Wayfinder
-Published upstream build: https://modrinth.com/mod/wayfinder_rbn/version/2.3-fabric.1.21.1
+The gameplay target is the official Wayfinder 3.5 Fabric build for Minecraft 1.21.10, backported to Minecraft 1.21.1 / NeoForge 21.1.249+.
+
+Upstream: https://github.com/n1tr0nR/Wayfinder  
+Pinned reference build: https://modrinth.com/mod/wayfinder_rbn
 
 ## Status
 
-Strict functional-parity candidate for Wayfinder 2.3 on NeoForge 1.21.1.
+Playable 3.5 backport with the current upstream workflow represented on NeoForge 1.21.1:
 
-Ported without third-party runtime libraries:
+- Signal Array registration, persistence, ownership and privacy
+- Signal Tweaker workflow
+- Signalscope frequency and gain controls
+- lens and upgrade insertion/removal
+- standard, Privacy and Vantage lens behavior
+- Signal Booster and Signal Expander range upgrades
+- server to client signal synchronization
+- directional signal audio and HUD
+- context-sensitive hand and GUI Signalscope models
+- original Wayfinder 3.5 assets/data pulled from the pinned upstream JAR at build time
 
-- `wayfinder:signal_array` and redstone-powered private networks
-- `wayfinder:signal_beacon`
-- `wayfinder:signalscope`
-- Concave, Privacy, Vantage and Twisted lenses
-- Wayfinder's Compass
-- Lifeform Analyzer item shell, matching upstream 2.3 behavior
-- persistent signal positions using vanilla `SavedData`
-- upstream-equivalent server-side player signal factor/volume tracking without Cardinal Components
-- native NeoForge server -> client synchronization
-- Signal Array editing and ownership
-- upstream-style Signalscope HUD, range, identification and distance display
-- smooth zoom and reduced mouse sensitivity
-- looping directional signal audio
-- original advancements
-- original recipes, structure/worldgen data and assets
-- upstream-compatible Signalscope / compass component ids and codecs
-
-The original Fabric libraries have deliberately **not** been ported as dependencies.
-
-See [PORTING_NOTES.md](PORTING_NOTES.md) for the implementation mapping and remaining cosmetic differences.
+The obsolete 2.3-only Compass, Signal Beacon and Lifeform Analyzer behavior is intentionally not part of the 3.5 backport.
 
 ## Runtime dependencies
 
@@ -43,7 +35,7 @@ No Fabric API, Sinytra Connector, Forgified Fabric API, Cardinal Components API,
 
 ## Upstream assets
 
-Wayfinder is **All Rights Reserved**. This repository is intended for private compatibility work. It does not commit the upstream binary textures/sounds/models. During the build, Gradle downloads the author's official Wayfinder `2.3-fabric.1.21.1` JAR from Modrinth, verifies its pinned SHA-256, and extracts the original `assets/wayfinder` and `data/wayfinder` content plus the relevant vanilla block tags.
+Wayfinder is **All Rights Reserved**. This repository does not commit the upstream binary textures, sounds or models. During the build, Gradle downloads the official Wayfinder 3.5 Fabric 1.21.10 JAR from Modrinth, verifies its pinned SHA-256 and extracts the required `assets/wayfinder/**` and `data/wayfinder/**` resources.
 
 Do not publish or redistribute this port without permission from the upstream author.
 
@@ -57,15 +49,18 @@ gradle build
 
 The resulting JAR is written to `build/libs/`.
 
-## Implementation notes
+CI additionally performs client mixin/resource startup and dedicated-server startup smoke tests.
 
-The Fabric/Cardinal world component is replaced by per-dimension vanilla `SavedData`. The Fabric/Cardinal player component is reproduced with server-side factor/volume tracking, persistent player NBT and a native NeoForge S2C payload, including upstream `NEVER_COPY` respawn behavior. This preserves the gameplay state machine without adding Cardinal Components.
+## Current client fixes
 
-Client rendering uses NeoForge events only where the observable result is equivalent to upstream. Two client mixins are retained for strict 1:1 parity where a loader-native replacement is not equivalent:
+The current port includes fixes for:
 
-- Humanoid arm pose while using the Signalscope
-- context-sensitive item model substitution for Signalscope, Compass and Lifeform Analyzer
+- correct GUI model selection for the Signalscope and installed lens/upgrade variants
+- inventory `Alt + mouse wheel` handling through NeoForge `ScreenEvent.MouseScrolled.Pre`
+- stable long-range Signalscope indicators at high gain instead of per-frame random flicker
 
-The port also preserves upstream string `ownerUUID` semantics, including the special `"beacon"` owner marker.
+## Migration provenance
 
-Mixin support is supplied by NeoForge itself and adds no external mod dependency.
+Development originally happened temporarily inside the DeepWake modpack repository. The port was merged there in PR #19, then migrated into this standalone repository. The fixed migration snapshot is based on DeepWake commit `e52c417be942331c9c3981e5dfe65f0ccab22130`. DeepWake PR #21 removed the embedded Wayfinder source tree and its dedicated CI from the modpack repository.
+
+See [PORTING_NOTES.md](PORTING_NOTES.md) and [PARITY_CHECKLIST.md](PARITY_CHECKLIST.md).
