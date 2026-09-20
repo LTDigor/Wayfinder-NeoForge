@@ -1,69 +1,75 @@
-# Wayfinder 2.3 -> NeoForge 1.21.1 porting notes
+# Wayfinder 3.5 -> NeoForge 1.21.1 porting notes
 
-This port targets Minecraft 1.21.1 / NeoForge 21.1.249+ and intentionally has no third-party runtime dependencies.
+Target: Minecraft 1.21.1 / NeoForge 21.1.249+.
+
+Reference behavior and assets come from the pinned official Wayfinder 3.5 Fabric 1.21.10 JAR. The 2.3 NeoForge port was used only as an early compatibility baseline.
 
 ## Loader/API replacements
 
-| Upstream Fabric implementation | NeoForge port |
+| Upstream concept | NeoForge 1.21.1 backport |
 | --- | --- |
-| Fabric Loader entrypoints | `@Mod` constructors |
+| Fabric entrypoints | `@Mod` constructors |
 | Fabric registries | NeoForge `DeferredRegister` |
 | Fabric networking | NeoForge custom payload API |
-| Cardinal Components world component | vanilla `SavedData` per dimension |
-| Cardinal Components player component | native server-side transient/persistent player signal state + NeoForge S2C payload |
-| Fabric HUD callback | NeoForge `RenderGuiEvent.Post` |
-| Fabric client tick callback | NeoForge `ClientTickEvent.Post` |
-| Fabric compass angle predicate | vanilla item property registered from NeoForge client setup |
-| `GameRendererMixin` | `ViewportEvent.ComputeFov` (numerically identical) |
-| `WorldRendererMixin` sound driver | vanilla `AbstractTickableSoundInstance` managed from client tick, fed by server-synced factor state |
-| direct mouse sensitivity mutation | same cached sensitivity mutation in client tick, matching upstream lifecycle |
-| Nitrogen tooltip styling | `RenderTooltipEvent.Color` |
-| Nitrogen `ColorableItem` | native item names + NeoForge tooltip color event |
-| Fabric datagen output | official upstream 2.3 JAR assets/data copied at build time with pinned SHA-256 |
+| world signal component | vanilla `SavedData` per dimension |
+| client HUD callbacks | NeoForge GUI layer/event integration |
+| client tick callbacks | `ClientTickEvent.Post` |
+| screen mouse wheel handling | `ScreenEvent.MouseScrolled.Pre` |
+| non-screen mouse wheel handling | `InputEvent.MouseScrollingEvent` |
+| custom item model substitution | client `ItemRendererMixin` |
+| advanced tooltip visuals | NeoForge tooltip events plus the retained container tooltip mixin |
 
-## Preserved compatibility
+## 3.5 gameplay represented by the backport
 
-- Mod id remains `wayfinder`.
-- Main registry ids remain the upstream ids.
-- Signalscope and compass data-component ids/codecs mirror upstream 2.3.
-- Signal Array block-entity NBT reads the upstream `owner_uuid` string and also writes it for interoperability.
-- Signal names, RGB values, signal type semantics and string `ownerUUID` semantics (including literal `"beacon"`) are preserved.
-- Redstone-powered Signal Arrays remain private to their owner.
-- Public Signal Arrays remain publicly editable.
-- Signal Beacon behavior and type 4 semantics are preserved.
-- Original recipes, advancements, structure/worldgen data, models, textures and sounds are taken from the official upstream JAR.
+- Signal Array signal storage, ownership and privacy
+- Signal Tweaker color/name/network/frequency/type editing
+- Signalscope frequency and gain state
+- lens slot and upgrade slot
+- standard, Privacy and Vantage lenses
+- Signal Booster and Signal Expander
+- updated HUD/audio signal behavior
+- server/client synchronization of signal state
 
-## Runtime dependency set
+The 2.3-only Compass, Signal Beacon, Concave/Twisted lens workflow and Lifeform Analyzer are not compatibility targets for this branch.
 
-Only:
+## Signalscope ranges
 
-- Minecraft 1.21.1
-- NeoForge 21.1.249+
+Range follows the 3.5 gain model used by the port:
 
-No Fabric API, Sinytra Connector, Forgified Fabric API, Cardinal Components API, Nitrogen, MidnightLib, Architectury or Cloth Config is required. The port uses NeoForge's bundled Mixin runtime for the two client mixins needed for exact rendering parity.
+- no upgrade: 1000m to 2000m
+- Signal Booster: 1500m to 3000m
+- Signal Expander: 2500m to 5000m
+
+Gain ranges from 30 to 40. Higher gain increases range while reducing positional accuracy.
+
+The positional error is deterministic for a given signal position and gain so the indicator remains visually stable instead of receiving a new random offset every rendered frame.
+
+## Client input
+
+Two different NeoForge input event families are required:
+
+- inventory/container scrolling uses `ScreenEvent.MouseScrolled.Pre`
+- held Signalscope frequency/gain scrolling uses `InputEvent.MouseScrollingEvent`, which NeoForge fires only outside screens
+
+This distinction is required for Signal Tweaker `Alt + wheel` to work in inventory screens.
+
+## Client model rendering
+
+The Signalscope selects a dedicated GUI model for GUI/GROUND/FIXED contexts and a hand model for held contexts. The item-renderer injection is bound to the exact Minecraft 1.21.1 `ItemRenderer.render(..., BakedModel)` descriptor and the first `BakedModel` argument to avoid silently missing the inventory render path.
+
+## Runtime dependencies
+
+Only Minecraft and NeoForge are runtime requirements. Mixin support is provided by NeoForge itself.
 
 ## Validation
 
 CI performs:
 
 1. zero-external-mod-dependency guard,
-2. Java 21 NeoForge build,
-3. pinned upstream asset SHA-256 verification,
-4. dedicated-server startup smoke test,
-5. JAR artifact upload.
+2. Java 21 build,
+3. pinned upstream JAR SHA-256 verification,
+4. client startup smoke test for mixin/model/resource failures,
+5. dedicated-server startup and Wayfinder datapack parsing smoke test,
+6. JAR artifact upload.
 
-## Parity strategy
-
-The port keeps upstream behavior rather than avoiding mixins categorically.
-
-Client mixins retained:
-- `HumanoidModelMixin` for the original Signalscope two-arm pose.
-- `ItemRendererMixin` for context-sensitive GUI/GROUND/hand models exactly like upstream.
-
-Loader-native replacements are used only where their externally observable behavior is equivalent:
-- FOV/zoom through `ViewportEvent.ComputeFov`.
-- Mouse sensitivity caching/mutation through the same tick lifecycle as upstream `ZoomHandler`.
-- Tooltip colors and custom tooltip component registration through NeoForge client events.
-- World state through vanilla `SavedData`, and player factor/volume state through native server tracking + NeoForge payloads.
-
-No third-party runtime library is required.
+Visual interaction still requires an in-game pass for exact appearance and feel.
