@@ -8,10 +8,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: wayfinder-neoforge-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +37,9 @@ jobs:
           fi
 
           unexpected_mod_ids="$(
-            grep -E '^[[:space:]]*modId=' src/main/templates/META-INF/neoforge.mods.toml               | sed -E 's/.*modId="([^"]+)".*/\1/'               | grep -Ev '^(\$\{mod_id\}|neoforge|minecraft)$' || true
+            grep -E '^[[:space:]]*modId=' src/main/templates/META-INF/neoforge.mods.toml \
+              | sed -E 's/.*modId="([^"]+)".*/\1/' \
+              | grep -Ev '^(\$\{mod_id\}|neoforge|minecraft)$' || true
           )"
 
           if [ -n "$unexpected_mod_ids" ]; then
@@ -47,6 +54,27 @@ jobs:
       - name: Record upstream asset input hash
         run: sha256sum build/upstream-wayfinder/wayfinder-fabric.jar
 
+      - name: Client mixin and resource smoke test
+        run: |
+          set +e
+          timeout 120s xvfb-run -a gradle runClient --stacktrace > "$RUNNER_TEMP/wayfinder-client.log" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/wayfinder-client.log"
+
+          if grep -Eq 'Mixin apply failed|MixinApplyError|InvalidInjectionException|InjectionError|Could not execute entrypoint|Failed to load model|Missing textures in model|Resource reload failed|Exception in thread "Render thread"' "$RUNNER_TEMP/wayfinder-client.log"; then
+            echo 'Client smoke found a fatal mixin/resource error.'
+            exit 1
+          fi
+
+          if grep -Eq 'Setting user:|OpenAL initialized|Created: [0-9]+x[0-9]+' "$RUNNER_TEMP/wayfinder-client.log"; then
+            echo "Client reached initialized runtime (timeout exit $code is expected)."
+            exit 0
+          fi
+
+          echo "Client did not reach initialized runtime (exit $code)."
+          exit 1
+
       - name: Dedicated server smoke test
         run: |
           mkdir -p run
@@ -56,10 +84,18 @@ jobs:
           code=$?
           set -e
           cat "$RUNNER_TEMP/wayfinder-server.log"
-          if grep -Eq 'Done \(|For help, type' run/logs/latest.log 2>/dev/null               || grep -Eq 'Done \(|For help, type' "$RUNNER_TEMP/wayfinder-server.log"; then
+
+          if grep -Eq 'Parsing error loading recipe wayfinder:|Parsing error loading advancement wayfinder:|Failed to parse.*wayfinder:' "$RUNNER_TEMP/wayfinder-server.log"; then
+            echo 'Wayfinder datapack resources failed to parse.'
+            exit 1
+          fi
+
+          if grep -Eq 'Done \(|For help, type' run/logs/latest.log 2>/dev/null \
+              || grep -Eq 'Done \(|For help, type' "$RUNNER_TEMP/wayfinder-server.log"; then
             echo 'Dedicated server reached ready state.'
             exit 0
           fi
+
           echo "Dedicated server did not reach ready state (exit $code)."
           exit 1
 
