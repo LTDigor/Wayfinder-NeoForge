@@ -1,0 +1,81 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.147'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+        configureEach { logLevel = org.slf4j.event.Level.INFO }
+    }
+    mods { "${mod_id}" { sourceSet(sourceSets.main) } }
+}
+
+def upstreamJarUrl = 'https://cdn.modrinth.com/data/L6vc46Id/versions/ZcMxbJVR/wayfinder-3.5-fabric.1.21.10.jar'
+def upstreamJarSha256 = '59daf0993c42f9877f3183518530e10760264fc1279d13da7e61bb3396833f3d'
+def upstreamJar = layout.buildDirectory.file('upstream-wayfinder/wayfinder-fabric.jar')
+def upstreamResources = layout.buildDirectory.dir('upstream-wayfinder/resources')
+
+tasks.register('prepareUpstreamAssets') {
+    inputs.property 'upstreamJarUrl', upstreamJarUrl
+    inputs.property 'upstreamJarSha256', upstreamJarSha256
+    outputs.dir(upstreamResources)
+    doLast {
+        def jarFile = upstreamJar.get().asFile
+        jarFile.parentFile.mkdirs()
+        if (!jarFile.exists()) {
+            logger.lifecycle('Downloading upstream Wayfinder 3.5 assets from Modrinth...')
+            new URI(upstreamJarUrl).toURL().withInputStream { input ->
+                jarFile.withOutputStream { output -> output << input }
+            }
+        }
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        def actualHash = digest.digest(jarFile.bytes).encodeHex().toString()
+        if (actualHash != upstreamJarSha256) {
+            throw new GradleException("Unexpected upstream Wayfinder JAR SHA-256: ${actualHash}")
+        }
+        def out = upstreamResources.get().asFile
+        delete(out)
+        copy {
+            from zipTree(jarFile)
+            include 'assets/wayfinder/**'
+            include 'data/wayfinder/**'
+            exclude 'data/wayfinder/recipe/**'
+            include 'data/minecraft/tags/block/mineable/pickaxe.json'
+            include 'data/minecraft/tags/block/needs_iron_tool.json'
+            into out
+        }
+    }
+}
+
+sourceSets.main.resources.srcDir(upstreamResources)
+tasks.named('processResources').configure { dependsOn tasks.named('prepareUpstreamAssets') }
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: minecraft_version,
+        minecraft_version_range: minecraft_version_range,
+        neo_version: neo_version,
+        loader_version_range: loader_version_range,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_license: mod_license,
+        mod_version: mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
