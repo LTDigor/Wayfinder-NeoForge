@@ -1,64 +1,53 @@
-# Wayfinder 2.3 parity checklist
+# Wayfinder 3.5 backport checklist
 
-Target: Minecraft 1.21.1 / NeoForge 21.1.249+
+Target: Minecraft 1.21.1 / NeoForge 21.1.249+  
+Reference: Wayfinder 3.5 Fabric 1.21.10
 
 ## Runtime behavior
 
-- [x] Signal Array registration, editing, owner UUID, colors, type and redstone privacy
-- [x] Signal Beacon registration, type 4 behavior, random-tick recovery and `ownerUUID = "beacon"`
-- [x] world signal persistence and synchronization
-- [x] player factor0..factor4 tracking
-- [x] Signalscope volume fade-in/fade-out and persistence
-- [x] CCA `RespawnCopyStrategy.NEVER_COPY` behavior reproduced on NeoForge
-- [x] Concave Lens range: 3000
+- [x] Signal Array registration, persistence, ownership and privacy
+- [x] world signal synchronization
+- [x] Signal Tweaker component and editing workflow
+- [x] Signal Tweaker inventory selection through Alt + mouse wheel
+- [x] Signalscope frequency control
+- [x] Signalscope gain control
+- [x] lens insertion/removal
+- [x] upgrade insertion/removal
+- [x] standard lens behavior
 - [x] Privacy Lens filtering
 - [x] Vantage Lens filtering
-- [x] Twisted Lens filtering and range: 500
-- [x] base Signalscope range: 1000
-- [x] look-factor math and 0.95 -> 1.0 snap
-- [x] 15.65 degree signal identification
-- [x] all five looping signal sound channels
-- [x] `Let The Choir Sing` timing and criteria
-- [x] `A+ Hearing`, `Personal VPN`, and compass advancements
-- [x] Signalscope used statistic
-- [x] Wayfinder Compass open/close lifecycle and angle predicate
-- [x] Lifeform Analyzer upstream 2.3 item-shell behavior
+- [x] Signal Booster range scaling
+- [x] Signal Expander range scaling
+- [x] directional signal audio
+- [x] updated 3.5 HUD signal tracking and labels
 
-## Client parity
+## Client behavior
 
-- [x] upstream Signalscope HUD textures, positioning, colors, fade ranges and signal text
-- [x] vignette and zoom interpolation
-- [x] upstream mouse-sensitivity caching and 0.4 multiplier
-- [x] Signal Array screen geometry, fields, RGB parsing and transparent type button
-- [x] custom colored Signal Array text fields
-- [x] Signalscope custom tooltip lens slot
-- [x] Nitrogen-equivalent tooltip background/border colors
-- [x] context-sensitive GUI/GROUND/hand models
-- [x] folded/open compass rendering
-- [x] Signalscope arm pose
+- [x] context-sensitive GUI/GROUND/FIXED vs hand Signalscope models
+- [x] installed lens/upgrade model variants
+- [x] GUI model injection bound to the exact 1.21.1 ItemRenderer method
+- [x] inventory scroll uses ScreenEvent.MouseScrolled.Pre
+- [x] held Alt + scroll frequency/gain input remains outside screens
+- [x] high-gain positional error is stable across rendered frames
+- [x] tooltip background/frame integration
 - [x] Signal Array cutout render layer
 
 ## Data and assets
 
-- [x] original `assets/wayfinder/**`
-- [x] original `data/wayfinder/**`
-- [x] original recipes
-- [x] original advancements
-- [x] original Signal Tower worldgen and NBT
-- [x] original Signal Array loot table
-- [x] `minecraft:mineable/pickaxe` tag
-- [x] `minecraft:needs_iron_tool` tag
+- [x] official 3.5 `assets/wayfinder/**` pulled from pinned upstream JAR
+- [x] official 3.5 `data/wayfinder/**` pulled from pinned upstream JAR
+- [x] NeoForge 1.21.1 recipes supplied where upstream 1.21.10 recipe format is not directly reusable
 - [x] upstream JAR SHA-256 pinned in Gradle
 
-## API replacements
+## Removed legacy compatibility targets
 
-Fabric/CCA/Nitrogen infrastructure is replaced with NeoForge-native APIs where that does not change observable behavior. Two client mixins remain because their loader-native substitutes are not behaviorally identical:
+These belonged to the old 2.3 compatibility baseline and are not part of the 3.5 target:
 
-- `HumanoidModelMixin`
-- `ItemRendererMixin`
-
-No third-party mod/runtime library is required.
+- Wayfinder's Compass
+- Signal Beacon
+- Lifeform Analyzer
+- Concave/Twisted lens workflow
 
 ## Validation boundary
 
-CI validates compilation, dependency policy, upstream asset identity and dedicated-server startup. The remaining validation that cannot be done headlessly is an in-game client visual/interaction pass on NeoForge 1.21.1.
+CI validates compilation, dependency policy, asset identity, client startup/mixin loading and dedicated-server startup. Exact visual appearance, mouse feel and inventory interaction still require an in-game client pass on NeoForge 1.21.1.
