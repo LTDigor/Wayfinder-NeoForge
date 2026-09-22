@@ -49,7 +49,9 @@ gradle build
 
 The resulting JAR is written to `build/libs/`.
 
-CI additionally performs client mixin/resource startup and dedicated-server startup smoke tests.
+`gradle build` includes dependency-free tooltip geometry and target-selection regression checks. CI additionally performs client mixin/resource startup and dedicated-server startup smoke tests.
+
+Run `gradle runClientValidation` for an automated in-game pass. It recreates only the isolated `build/client-validation/saves/wayfinder-validation` world, tests item transfers and network controls, captures inventory/HUD scenarios, and exits with a validation result. Screenshots and `validation.txt` remain under `build/client-validation/`; they and the test mod are excluded from the shipped JAR. A graphical session is required (CI can use `xvfb-run`).
 
 ## Current client fixes
 
@@ -58,6 +60,10 @@ The current port includes fixes for:
 - correct GUI model selection for the Signalscope and installed lens/upgrade variants
 - inventory `Alt + mouse wheel` handling through NeoForge `ScreenEvent.MouseScrolled.Pre`
 - stable long-range Signalscope indicators at high gain instead of per-frame random flicker
+- tooltip panels, slots and controls sharing native tooltip positioning and depth
+- identified targets converging in their own color, above other signal frames
+- crafting result protection against module duplication
+- physical Ctrl fine adjustment on macOS
 
 ## Migration provenance
 

@@ -54,6 +54,9 @@ jobs:
       - name: Record upstream asset input hash
         run: sha256sum build/upstream-wayfinder/wayfinder-fabric.jar
 
+      - name: In-game inventory, network and rendering validation
+        run: timeout 300s xvfb-run -a gradle runClientValidation --stacktrace
+
       - name: Client mixin and resource smoke test
         run: |
           set +e

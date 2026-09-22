@@ -15,6 +15,8 @@ import dev.nitron.wayfinder.registry.WayfinderDataComponents;
 import dev.nitron.wayfinder.registry.WayfinderItems;
 import dev.nitron.wayfinder.registry.WayfinderSounds;
 import com.mojang.datafixers.util.Either;
+import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -37,6 +39,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
+import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -93,7 +96,10 @@ public final class ClientEvents {
 
         ItemStack stack = slot.getItem();
         boolean alt = Screen.hasAltDown();
-        boolean control = Screen.hasControlDown();
+        // Upstream uses physical Ctrl; Screen.hasControlDown maps to Command on macOS.
+        long window = Minecraft.getInstance().getWindow().getWindow();
+        boolean control = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL)
+                || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_CONTROL);
 
         if (stack.getItem() instanceof SignalscopeItem) {
             SignalscopeComponent component =
@@ -216,6 +222,9 @@ public final class ClientEvents {
         ItemStack stack = event.getItemStack();
         List<Either<FormattedText, TooltipComponent>> lines = event.getTooltipElements();
 
+        if (!(stack.getItem() instanceof SignalscopeItem)
+                && !(stack.getItem() instanceof SignalTweakerItem)) return;
+
         lines.removeIf(line -> line.left()
                 .map(FormattedText::getString)
                 .map("Tools & Utilities"::equals)
@@ -246,7 +255,7 @@ public final class ClientEvents {
         boolean shift = Screen.hasShiftDown();
         boolean control = Screen.hasControlDown();
 
-        line(lines, Component.empty());
+        lines.add(1, Either.right(new WayfinderTooltip.Modules(component)));
 
         if (!component.upgradeItemstack().isEmpty()) {
             Component name = component.upgradeItemstack().getHoverName().copy()
@@ -436,49 +445,24 @@ public final class ClientEvents {
         line(lines, Component.literal("Hold down ALT to switch data.")
                 .withStyle(ChatFormatting.GRAY));
         line(lines, Component.empty());
-
-        line(lines, Component.literal(String.format(
-                        "  %03d  %03d  %03d",
-                        component.color().getX(),
-                        component.color().getY(),
-                        component.color().getZ()))
-                .withStyle(style -> style.withColor(0xF7DB70)));
-
+        lines.add(Either.right(new WayfinderTooltip.Colors(component)));
         line(lines, Component.empty());
-
-        line(lines, Component.literal("  Name:")
+        line(lines, Component.literal("  Name: ")
+                .withStyle(ChatFormatting.DARK_GRAY)
                 .append(Component.literal(component.name())
-                        .withStyle(style -> style.withColor(0xF7DB70)))
-                .withStyle(ChatFormatting.DARK_GRAY));
-
+                        .withStyle(style -> style.withColor(0xF7DB70))));
         line(lines, Component.empty());
-
-        line(lines, Component.literal("  Network:")
-                .append(Component.literal(
-                                component.privateNetwork()
-                                        ? "Private"
-                                        : "Public")
-                        .withStyle(style -> style.withColor(0xF7DB70)))
-                .withStyle(ChatFormatting.DARK_GRAY));
-
+        lines.add(Either.right(new WayfinderTooltip.Network(component)));
         line(lines, Component.empty());
-
-        line(lines, Component.literal("  Data:")
-                .withStyle(ChatFormatting.DARK_GRAY));
-
-        line(lines, Component.literal("  - Frequency:")
-                .append(Component.literal(Integer.toString(component.freq()))
-                        .withStyle(style -> style.withColor(0xF7DB70)))
-                .append(Component.literal(" | - Type:"))
-                .append(Component.literal(typeName(component.type()))
-                        .withStyle(style -> style.withColor(0xF7DB70)))
-                .withStyle(ChatFormatting.DARK_GRAY));
+        line(lines, Component.literal("  Data:").withStyle(ChatFormatting.DARK_GRAY));
+        lines.add(Either.right(new WayfinderTooltip.Data(component)));
     }
 
-    private static String typeName(int type) {
-        if (type == 1) return "Alternate";
-        if (type == 2) return "Final";
-        return "Default";
+    public static void onRegisterTooltipFactories(RegisterClientTooltipComponentFactoriesEvent event) {
+        event.register(WayfinderTooltip.Modules.class, AdvancedTooltipOverlay::new);
+        event.register(WayfinderTooltip.Colors.class, AdvancedTooltipOverlay::new);
+        event.register(WayfinderTooltip.Network.class, AdvancedTooltipOverlay::new);
+        event.register(WayfinderTooltip.Data.class, AdvancedTooltipOverlay::new);
     }
 
     private static void line(
@@ -511,19 +495,9 @@ public final class ClientEvents {
         graphics.pose().pushPose();
         graphics.pose().translate(0.0F, 0.0F, 400.0F);
 
-        graphics.blitSprite(
-                TOOLTIP_BACKGROUND,
-                event.getX() - 3,
-                event.getY() - 3,
-                tooltipWidth + 6,
-                tooltipHeight + 6);
-
-        graphics.blitSprite(
-                TOOLTIP_FRAME,
-                event.getX() - 3,
-                event.getY() - 3,
-                tooltipWidth + 6,
-                tooltipHeight + 6);
+        var bounds = TooltipLayout.background(event.getX(), event.getY(), tooltipWidth, tooltipHeight);
+        graphics.blitSprite(TOOLTIP_BACKGROUND, bounds.x(), bounds.y(), bounds.width(), bounds.height());
+        graphics.blitSprite(TOOLTIP_FRAME, bounds.x(), bounds.y(), bounds.width(), bounds.height());
 
         graphics.pose().popPose();
 

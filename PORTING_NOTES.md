@@ -17,7 +17,7 @@ Reference behavior and assets come from the pinned official Wayfinder 3.5 Fabric
 | screen mouse wheel handling | `ScreenEvent.MouseScrolled.Pre` |
 | non-screen mouse wheel handling | `InputEvent.MouseScrollingEvent` |
 | custom item model substitution | client `ItemRendererMixin` |
-| advanced tooltip visuals | NeoForge tooltip events plus the retained container tooltip mixin |
+| advanced tooltip visuals | NeoForge tooltip components/factories and color events |
 
 ## 3.5 gameplay represented by the backport
 
@@ -42,7 +42,9 @@ Range follows the 3.5 gain model used by the port:
 
 Gain ranges from 30 to 40. Higher gain increases range while reducing positional accuracy.
 
-The positional error is deterministic for a given signal position and gain so the indicator remains visually stable instead of receiving a new random offset every rendered frame.
+The positional error is deterministic for a given signal position and gain so the indicator remains visually stable instead of receiving a new random offset every rendered frame. Once the real transmitter is identified, its frames converge and use the same color as its label. It renders last so another nearby signal cannot cover its frames.
+
+Tooltip text, slots and controls participate in the native component layout; NeoForge supplies their final position. Backgrounds use a 12px outer inset to compensate for the transparent margins in the original textures, at the same depth as the native tooltip pass.
 
 ## Client input
 
@@ -72,4 +74,4 @@ CI performs:
 5. dedicated-server startup and Wayfinder datapack parsing smoke test,
 6. JAR artifact upload.
 
-Visual interaction still requires an in-game pass for exact appearance and feel.
+`gradle build` also runs tooltip geometry and target-indicator regression checks. `gradle runClientValidation` performs an isolated client/integrated-server pass: module conservation (including crafting outputs), lens filters and range endpoints, physical Ctrl/Alt inventory scroll, packet synchronization, native inventory tooltips at GUI scales 2–4 with modifiers/advanced details, screen-edge placement, gain 30/32/40, multiple signals, camera views, custom colors and frame stability. It produces screenshots for visual inspection; it does not compare against pixel-identical Fabric screenshots or test third-party shader/mod combinations.

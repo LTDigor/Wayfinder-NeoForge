@@ -29,7 +29,11 @@ Reference: Wayfinder 3.5 Fabric 1.21.10
 - [x] inventory scroll uses ScreenEvent.MouseScrolled.Pre
 - [x] held Alt + scroll frequency/gain input remains outside screens
 - [x] high-gain positional error is stable across rendered frames
-- [x] tooltip background/frame integration
+- [x] tooltip background/frame integration with transparent texture margins
+- [x] native tooltip layout/depth for module slots and editable controls
+- [x] identified transmitter frames share label color and render above other signals
+- [x] crafting preview cannot yield modules without ingredient consumption
+- [x] physical Ctrl fine adjustment on macOS
 - [x] Signal Array cutout render layer
 
 ## Data and assets
@@ -50,4 +54,4 @@ These belonged to the old 2.3 compatibility baseline and are not part of the 3.5
 
 ## Validation boundary
 
-CI validates compilation, dependency policy, asset identity, client startup/mixin loading and dedicated-server startup. Exact visual appearance, mouse feel and inventory interaction still require an in-game client pass on NeoForge 1.21.1.
+CI validates compilation, dependency policy, asset identity, geometry/indicator regressions, client startup/mixin loading and dedicated-server startup. The separate `runClientValidation` task checks actual item transactions, filters, range endpoints, client/server controls and rendered inventory/HUD scenarios on NeoForge 1.21.1. Its screenshots require visual inspection. Pixel-identical comparison against a running Fabric reference, physical mouse feel and third-party mod/shader compatibility remain outside this automated pass.

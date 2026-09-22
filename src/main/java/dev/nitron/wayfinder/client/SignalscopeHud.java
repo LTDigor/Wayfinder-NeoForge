@@ -12,7 +12,6 @@ import dev.nitron.wayfinder.util.SignalscopeHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -155,7 +154,7 @@ public final class SignalscopeHud {
                         .findFirst()
                         .orElse(null);
 
-        for (SignalRecord signal : signals) {
+        for (SignalRecord signal : SignalIndicator.targetLast(signals, s -> s.pos().equals(lookedAtFinal))) {
             BlockPos displayPos = signal.pos();
 
             if (randomBound >= 1) {
@@ -187,46 +186,25 @@ public final class SignalscopeHud {
                                     SignalscopeHelper.TRACKING_ANGLE,
                                     partialTick);
 
-            int displacement =
-                    (int) (130.0F * inverseLook);
+            int signalRgb = (signal.red() << 16) | (signal.green() << 8) | signal.blue();
+            SignalIndicator indicator = SignalIndicator.resolve(
+                    signal.pos().equals(lookedAt), 1.0F - inverseLook, signalRgb);
+            int displacement = indicator.displacement();
 
             double distance =
                     mc.player.position()
                             .distanceTo(
                                     net.minecraft.world.phys.Vec3
-                                            .atLowerCornerOf(displayPos));
+                                            .atLowerCornerOf(signal.pos()));
 
             float distanceAlpha =
                     distanceAlpha(
                             distance,
                             range);
 
-            float alpha =
-                    (1.0F - inverseLook)
-                            * distanceAlpha;
-
-            Vec3i color;
-
-            if (inverseLook == 0.0F) {
-                color = new Vec3i(76, 255, 153);
-
-                if (lookedSignal != null) {
-                    color =
-                            new Vec3i(
-                                    lookedSignal.red(),
-                                    lookedSignal.green(),
-                                    lookedSignal.blue());
-                }
-            } else {
-                color = new Vec3i(255, 78, 78);
-            }
-
-            int argb =
-                    argb(
-                            alpha,
-                            color.getX(),
-                            color.getY(),
-                            color.getZ());
+            float alpha = indicator.lookFactor() * distanceAlpha;
+            int argb = argb(alpha, (indicator.rgb() >>> 16) & 255,
+                    (indicator.rgb() >>> 8) & 255, indicator.rgb() & 255);
 
             blitTinted(
                     graphics,

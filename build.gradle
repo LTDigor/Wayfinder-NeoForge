@@ -79,3 +79,59 @@ var generateModMetadata = tasks.register('generateModMetadata', ProcessResources
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+sourceSets { renderingTest }
+sourceSets.renderingTest.compileClasspath += sourceSets.main.output
+sourceSets.renderingTest.runtimeClasspath += sourceSets.main.output
+
+tasks.register('renderingRegressionTest', JavaExec) {
+    dependsOn tasks.named('renderingTestClasses')
+    classpath = sourceSets.renderingTest.runtimeClasspath
+    mainClass = 'dev.nitron.wayfinder.client.RenderingRegressionTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check').configure { dependsOn tasks.named('renderingRegressionTest') }
+
+// Test-only mod: exercises actual Minecraft rendering, without OS input automation.
+sourceSets { clientTest }
+sourceSets.clientTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+sourceSets.clientTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+neoForge.mods {
+    wayfinder_tests { sourceSet sourceSets.clientTest }
+}
+neoForge.runs {
+    configureEach { loadedMods = [neoForge.mods.wayfinder] }
+    clientValidation {
+        client()
+        sourceSet = sourceSets.clientTest
+        loadedMods = [neoForge.mods.wayfinder, neoForge.mods.wayfinder_tests]
+        gameDirectory = layout.buildDirectory.dir('client-validation')
+        programArguments.addAll('--width', '1280', '--height', '960')
+    }
+}
+
+tasks.register('prepareClientValidationWorld') {
+    doLast {
+        def directory = layout.buildDirectory.dir('client-validation').get().asFile
+        delete(new File(directory, 'saves/wayfinder-validation'))
+        delete(new File(directory, 'screenshots'))
+        delete(new File(directory, 'validation.txt'))
+        directory.mkdirs()
+        new File(directory, 'options.txt').text = '''onboardAccessibility:false
+renderDistance:4
+simulationDistance:5
+maxFps:60
+pauseOnLostFocus:false
+tutorialStep:none
+'''
+    }
+}
+tasks.named('runClientValidation').configure {
+    dependsOn tasks.named('prepareClientValidationWorld')
+    doLast {
+        def result = layout.buildDirectory.file('client-validation/validation.txt').get().asFile
+        if (!result.exists() || !result.text.startsWith('PASS ')) {
+            throw new GradleException(result.exists() ? result.text : 'Client validation did not finish')
+        }
+    }
+}

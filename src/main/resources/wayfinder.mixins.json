@@ -3,7 +3,6 @@
   "package": "dev.nitron.wayfinder.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "DrawContextMixin",
     "InGameHudMixin",
     "ItemRendererMixin"
   ],

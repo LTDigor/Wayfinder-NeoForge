@@ -10,7 +10,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickAction;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.ResultSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -50,7 +50,8 @@ public final class SignalscopeItem extends Item {
                     scope, carried, slot, action, player, carriedAccess);
         }
 
-        if (player.containerMenu instanceof InventoryMenu && slot.index == 0) {
+        // Editing a recipe preview bypasses ResultSlot.onTake and ingredient consumption.
+        if (slot instanceof ResultSlot) {
             return super.overrideOtherStackedOnMe(
                     scope, carried, slot, action, player, carriedAccess);
         }

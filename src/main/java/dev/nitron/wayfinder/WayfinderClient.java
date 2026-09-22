@@ -12,6 +12,7 @@ public final class WayfinderClient {
         modBus.addListener(ClientEvents::onClientSetup);
         modBus.addListener(ClientEvents::onRegisterAdditionalModels);
         modBus.addListener(ClientEvents::onRegisterGuiLayers);
+        modBus.addListener(ClientEvents::onRegisterTooltipFactories);
         NeoForge.EVENT_BUS.addListener(ClientEvents::onScreenMouseScroll);
         NeoForge.EVENT_BUS.addListener(ClientEvents::onMouseScroll);
         NeoForge.EVENT_BUS.addListener(ClientEvents::onClientTick);
